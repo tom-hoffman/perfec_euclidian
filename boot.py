@@ -7,8 +7,10 @@
 # and ALL CAPS are recommended.  
 import config
 import storage
+import supervisor 
 
 storage.remount("/", readonly=False)
 m = storage.getmount("/")
-m.label = config.USB_NAME
+m.label = config.USB_NAME[:11]  # limit to max size for FAT filesystem name
+supervisor.set_usb_identification(product=config.USB_NAME)
 storage.remount("/", readonly=True)
