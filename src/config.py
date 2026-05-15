@@ -7,8 +7,9 @@
 
 from micropython import const
 
-# Assign this CPX an integer identifier (<9) that is unique for
-# your Euclidian sequencers.
+# Assign this CPX a one digit identifier different than other modules 
+# of the same type.
+
 CPX_NUMBER = 0
 
 USB_NAME = "EUCLID" + str(CPX_NUMBER)
