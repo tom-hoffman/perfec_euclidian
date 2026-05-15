@@ -50,19 +50,25 @@ channel_out: int = 9
 
 NOTE_NUMBERS: tuple[int] = const((36, 40, 41, 43, 42, 46))
 
-# starting values for the sequencer
+
+# STARTING VALUES 
 # Adjust these if you want to create a pleasant default rhythm
 # when your sequencers are powered up.
-DEFAULT_STEPS: int = 4
-DEFAULT_TRIGGERS: int = 1
-DEFAULT_ROTATION: int = 0
 
-
-# The note index THIS sequence sends out when restarted:
+# DEFAULT_NOTE note index this sequence sends out when restarted:
 # Adjust this to create a pleasant default setting for 
 # multiple sequencers and voices.
+DEFAULT_NOTE: int = 0
 
-note: int = 0
+# Starting number of steps in the sequence.
+DEFAULT_STEPS: int = 4
+
+# Starting number of triggers in the sequence.
+DEFAULT_TRIGGERS: int = 1
+
+# The starting point in the sequence when powered up
+# or when the sequence is stopped and restarted.
+DEFAULT_ROTATION: int = 0
 
 
 # Velocity (volume/intensity) selector uses these values
@@ -71,7 +77,6 @@ note: int = 0
 VELOCITIES: tuple[int] = const((0, 25, 50, 75, 100, 127))
 
 # Default velocity index:
-
 DEFAULT_VELOCITY: int = 4
 
 
@@ -98,6 +103,7 @@ GATE_DURATION: int = 6
 # for every time we check and update the board buttons, neopixels, etc.
 # raising this value reduces audible rhythm lag
 # reducing this value decreases button and neopixel lag
+
 MIDI_READ_REPEAT: int = 256
 
 
