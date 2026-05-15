@@ -10,40 +10,97 @@ from micropython import const
 # Give each Circuit Playground a unique name so you don't get confused!
 USB_NAME: str = "EUCLID0"
 
-# send MIDI messages on:
-# this is the "raw" 0-15 scale
-channel_out: int = 15
+# Output MIDI channel for note messages.
+# This is the "raw" 0-15 scale used in code, 
+# rather than 1-16 as is often displayed.
+# "Raw" channel 9 is the default drum and percussion channel under the 
+# General MIDI specification (listed as 10 on the 1-16 scale).
+
+channel_out: int = 9
+
+
+# NOTE_NUMBERS is a tuple of MIDI note values.  The active value
+# can be selected directly from the CPX 
+# using the buttons and neopixel interface.
+# The default values are based on the General MIDI specification
+# for percussion values and correspond to:
+
+'''
+ * 36/C1: bass drum 
+ * 40/E1: electric snare
+ * 41/F1: low tom-tom
+ * 43/G1: high tom-tom
+ * 42/F#1: closed hi-hat
+ * 46/Bb1: open hi-hat
+'''
+
+# If everyone is following the General MIDI specification correctly,
+# if these sequencers are plugged into a computer running a DAW or 
+# other MIDI workstation, the sounds listed above should correspond to
+# the values selected on the Circuit Playground.
+
+# In practice, you might need to adjust the note numbers either in this 
+# config file (below) or on the MIDI synthesizer.
+
+# The first four notes are also part of the C major scale,
+# so with several sequencers and a melodic (non-percussion)
+# synth you can make a quick melodic bass sequence.  
+# Changing the note values will of course change the notes in 
+# the melodic sequence.
+
+NOTE_NUMBERS: tuple[int] = const((36, 40, 41, 43, 42, 46))
+
+# starting values for the sequencer
+# Adjust these if you want to create a pleasant default rhythm
+# when your sequencers are powered up.
+DEFAULT_STEPS: int = 4
+DEFAULT_TRIGGERS: int = 1
+DEFAULT_ROTATION: int = 0
+
+
+# The note index THIS sequence sends out when restarted:
+# Adjust this to create a pleasant default setting for 
+# multiple sequencers and voices.
+
+note: int = 0
+
+
+# Velocity (volume/intensity) selector uses these values
+# Allowed range is integers from 0 to 127 (7 bits)
+
+VELOCITIES: tuple[int] = const((0, 25, 50, 75, 100, 127))
+
+# Default velocity index:
+
+DEFAULT_VELOCITY: int = 4
+
+
+# Pulses Per Quarter Note
+# The number of clock triggers counted before the sequencer advances.
+# 24 is the official MIDI standard.
+# If you want some sequencers to run faster or slower than others,
+# try doubling or halving this value.
+
+PPQN: int = 24
+
+
+# Duration of analog gate
+# This is the number of MIDI pulses the analog gate signal
+# will be held open after being triggered.
+# Must be manually set to less than PPQN (currently throws
+# an exception if longer).
+
+GATE_DURATION: int = 6
+
 
 # MIDI repeat count
 # this is the number of times we check and process the MIDI queue
 # for every time we check and update the board buttons, neopixels, etc.
-# raise this value if you are getting audible rhythm lag
-# which will in turn increase button and neopixel lag
+# raising this value reduces audible rhythm lag
+# reducing this value decreases button and neopixel lag
 MIDI_READ_REPEAT: int = 256
 
-# These are the note values each sequencer will put out.
-# preset for Nord Drum 3p - 60, 62, 64, 65, 67, 69
-NOTE_NUMBERS: tuple[int] = const((60, 62, 64, 65, 67, 69))
 
-# The note index THIS sequence sends out when restarted:
-note: int = 0
 
-# Velocity selector uses these values
-VELOCITIES: tuple[int] = const((0, 25, 50, 75, 100, 127))
-
-# pulses per quarter note
-# 24 is the official MIDI standard but it is commonly multiplied
-# for more precision
-PPQN: int = 24
-
-# duration of analog gate
-# currently must be manually set to less than PPQN
-GATE_DURATION: int = 6
-
-# starting values for the sequencer
-DEFAULT_VELOCITY: int = 4
-DEFAULT_STEPS: int = 4
-DEFAULT_TRIGGERS: int = 1
-DEFAULT_ROTATION: int = 0
 
 
