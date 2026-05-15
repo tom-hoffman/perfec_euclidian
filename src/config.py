@@ -59,8 +59,8 @@ DEFAULT_VELOCITY: int = 4
 '''
  * 36/C1: bass drum 
  * 40/E1: electric snare
- * 41/F1: low tom-tom
  * 43/G1: high tom-tom
+ * 41/F1: low tom-tom
  * 42/F#1: closed hi-hat
  * 46/Bb1: open hi-hat
 '''
@@ -79,7 +79,7 @@ DEFAULT_VELOCITY: int = 4
 # Changing the note values will of course change the notes in 
 # the melodic sequence.
 
-NOTE_NUMBERS: tuple[int] = const((36, 40, 41, 43, 42, 46))
+NOTE_NUMBERS: tuple[int] = const((36, 40, 43, 41, 42, 46))
 
 
 # Pulses Per Quarter Note
