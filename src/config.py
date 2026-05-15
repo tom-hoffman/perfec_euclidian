@@ -3,7 +3,7 @@
 # copyright 2026, Tom Hoffman
 # MIT License
 
-# Starting variables that might need to be changed by the user.
+# Variables and settings that might need to be changed by the user.
 
 from micropython import const
 
