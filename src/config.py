@@ -19,6 +19,37 @@ USB_NAME: str = "EUCLID0"
 channel_out: int = 9
 
 
+# STARTING VALUES 
+# Adjust these if you want to create a pleasant default rhythm
+# when your sequencers are powered up.
+
+# DEFAULT_NOTE note index this sequence sends out when restarted:
+# Adjust this to create a pleasant default setting for 
+# multiple sequencers and voices.
+DEFAULT_NOTE: int = 0
+
+# Starting number of steps in the sequence.
+DEFAULT_STEPS: int = 4
+
+# Starting number of triggers in the sequence.
+DEFAULT_TRIGGERS: int = 1
+
+# The starting point in the sequence when powered up
+# or when the sequence is stopped and restarted.
+DEFAULT_ROTATION: int = 0
+
+
+# Velocity (volume/intensity) selector uses these values
+# Allowed range is integers from 0 to 127 (7 bits)
+
+VELOCITIES: tuple[int] = const((0, 25, 50, 75, 100, 127))
+
+# Default velocity index:
+DEFAULT_VELOCITY: int = 4
+
+
+# Setting Available Notes
+#
 # NOTE_NUMBERS is a tuple of MIDI note values.  The active value
 # can be selected directly from the CPX 
 # using the buttons and neopixel interface.
@@ -49,35 +80,6 @@ channel_out: int = 9
 # the melodic sequence.
 
 NOTE_NUMBERS: tuple[int] = const((36, 40, 41, 43, 42, 46))
-
-
-# STARTING VALUES 
-# Adjust these if you want to create a pleasant default rhythm
-# when your sequencers are powered up.
-
-# DEFAULT_NOTE note index this sequence sends out when restarted:
-# Adjust this to create a pleasant default setting for 
-# multiple sequencers and voices.
-DEFAULT_NOTE: int = 0
-
-# Starting number of steps in the sequence.
-DEFAULT_STEPS: int = 4
-
-# Starting number of triggers in the sequence.
-DEFAULT_TRIGGERS: int = 1
-
-# The starting point in the sequence when powered up
-# or when the sequence is stopped and restarted.
-DEFAULT_ROTATION: int = 0
-
-
-# Velocity (volume/intensity) selector uses these values
-# Allowed range is integers from 0 to 127 (7 bits)
-
-VELOCITIES: tuple[int] = const((0, 25, 50, 75, 100, 127))
-
-# Default velocity index:
-DEFAULT_VELOCITY: int = 4
 
 
 # Pulses Per Quarter Note
