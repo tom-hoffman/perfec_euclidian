@@ -23,7 +23,7 @@ print("After board controller: " + str(gc.mem_free()))
 
 led_count = 10
 
-tm = SequenceModel(config.note, config.NOTE_NUMBERS, led_count=led_count)
+tm = SequenceModel(config.DEFAULT_NOTE, config.NOTE_NUMBERS, led_count=led_count)
 tm.generate()
 
 mc = midi_controller.Playing(tm, MinimalMidi(None, config.channel_out))
