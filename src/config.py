@@ -7,12 +7,15 @@
 
 from micropython import const
 
-# Give each Circuit Playground a unique name so you don't get confused!
-USB_NAME: str = "EUCLID0"
+# Assign this CPX an integer identifier (<9) that is unique for
+# your Euclidian sequencers.
+CPX_NUMBER = 0
+
+USB_NAME = "EUCLID" + str(CPX_NUMBER)
+
 
 # Output MIDI channel for note messages.
-# This is the "raw" 0-15 scale used in code, 
-# rather than 1-16 as is often displayed.
+# This is the "raw" 0-15 scale used in code, rather than 1-16 as is often displayed.
 # "Raw" channel 9 is the default drum and percussion channel under the 
 # General MIDI specification (listed as 10 on the 1-16 scale).
 
