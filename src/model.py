@@ -6,8 +6,6 @@
 import config
 import math
 
-# CONSTANTS
-MAX_VELOCITY = 6
 
 def gen_mask(n, acc):
     # generates a bitmask for n bits
@@ -111,5 +109,5 @@ class SequenceModel(object):
         self.generate()
     
     def increment_velocity(self):
-        self.velocity_index = (self.velocity_index + 1) % MAX_VELOCITY
+        self.velocity_index = (self.velocity_index + 1) % len(config.VELOCITIES)
         self.update_display = True
