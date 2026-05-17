@@ -105,5 +105,3 @@ class ConfigView(View):
         self.display_velocity()
         self.model.update_display = False
         self.pix.show()
-
-

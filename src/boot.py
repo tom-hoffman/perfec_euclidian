@@ -7,7 +7,7 @@
 # and ALL CAPS are recommended.  
 import config
 import storage
-import supervisor 
+import supervisor
 
 storage.remount("/", readonly=False)
 m = storage.getmount("/")
