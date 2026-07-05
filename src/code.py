@@ -5,6 +5,7 @@
 
 # This module contains the main loop of the application.
 
+__version__ = "1.0.0 beta"
 
 import gc
 print("After gc: " + str(gc.mem_free()))

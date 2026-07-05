@@ -9,11 +9,12 @@
 # to try to ensure your DAW and OS will be able to differentiate
 # between different modules.
 
-
-import config
 import storage
 import usb_midi
 import supervisor
+
+import config
+
 
 storage.remount("/", readonly=False)
 m = storage.getmount("/")
@@ -23,6 +24,6 @@ usb_midi.set_names(streaming_interface_name = n + "-STR",
 				   audio_control_interface_name =n  + "-AUD",
 				   in_jack_name = n + "-IN",
 				   out_jack_name = n + "-OUT")
-supervisor.set_usb_identification(manufacturer="PERFEC", 
-                                  product=n)
+supervisor.set_usb_identification(manufacturer = "PERFEC " + n, 
+                                  product = n)
 storage.remount("/", readonly=True)
