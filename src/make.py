@@ -116,11 +116,11 @@ def main():
     # 2. Determine Output Directory Targets
     target_paths = []
     if args.count is not None:
-        if args.count < 1:
-            print("Error: Count must be 1 or greater.")
+        if args.count < 0:
+            print("Error: Count must be 0 or greater.")
             sys.exit(1)
         base_path = Path(args.target_dir)
-        for i in range(1, args.count + 1):
+        for i in range(0, args.count):
             target_paths.append(Path(f"{base_path}{i}"))
     else:
         target_paths.append(Path(args.target_dir))

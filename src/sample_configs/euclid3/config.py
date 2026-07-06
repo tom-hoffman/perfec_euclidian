@@ -10,7 +10,7 @@ from micropython import const
 # Assign this CPX a one digit identifier different than other modules 
 # of the same type.
 
-CPX_NUMBER = 3
+CPX_NUMBER = 0
 
 USB_NAME = "EUCLID" + str(CPX_NUMBER)
 
@@ -30,22 +30,17 @@ channel_out: int = 9
 # DEFAULT_NOTE note index this sequence sends out when restarted:
 # Adjust this to create a pleasant default setting for 
 # multiple sequencers and voices.
-
-# By default the note index is the same as the CPX_NUMBER
-# indicated above.  You can change it to a specific value
-# if you wish.
-
-DEFAULT_NOTE: int = CPX_NUMBER
+DEFAULT_NOTE: int = 0
 
 # Starting number of steps in the sequence.
-DEFAULT_STEPS: int = 2
+DEFAULT_STEPS: int = 4
 
 # Starting number of triggers in the sequence.
 DEFAULT_TRIGGERS: int = 1
 
 # The starting point in the sequence when powered up
 # or when the sequence is stopped and restarted.
-DEFAULT_ROTATION: int = 1
+DEFAULT_ROTATION: int = 0
 
 
 # Velocity (volume/intensity) selector uses these values
@@ -115,8 +110,7 @@ GATE_DURATION: int = 6
 # raising this value reduces audible rhythm lag
 # reducing this value decreases button and neopixel lag
 
-MIDI_READ_REPEAT: int = 256
-
+MIDI_READ_REPEAT: int = const(256)
 
 
 
