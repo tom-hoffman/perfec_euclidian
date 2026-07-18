@@ -116,11 +116,11 @@ def main():
     # 2. Determine Output Directory Targets
     target_paths = []
     if args.count is not None:
-        if args.count < 0:
-            print("Error: Count must be 0 or greater.")
+        if args.count < 1:
+            print("Error: Count must be 1 or greater.")
             sys.exit(1)
         base_path = Path(args.target_dir)
-        for i in range(0, args.count):
+        for i in range(1, args.count + 1):
             target_paths.append(Path(f"{base_path}{i}"))
     else:
         target_paths.append(Path(args.target_dir))
@@ -179,11 +179,7 @@ def main():
                 else:
                     compile_and_copy(local_path, remote_path, mpy_cross_exe)
                     print(f" ✓ Compiled and copied: {remote_path.name}")
-                    
-        # Archive after target iteration completes
-        #archive_name = remote_dir.name
-        #shutil.make_archive(str(remote_dir.parent / archive_name), 'zip', remote_dir)
-        #print(f" ✓ ZIP file saved to: {remote_dir.parent / f'{archive_name}.zip'}")
+
 
 if __name__ == "__main__":
     main()

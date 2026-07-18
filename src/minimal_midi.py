@@ -1,109 +1,93 @@
-# PERFEC System Euclidian Sequencer # midi_controller.py 
-# copyright 2026, Tom Hoffman # MIT License
+# PERFEC System Euclidian Sequencer
+# minimal_midi.py
+# copyright 2026, Tom Hoffman
+# MIT License
+# Very stripped down and MIDI processing. Only handles the messages we need, and only the data we need from those messages.
+# Note that MinimalMidi uses 0-15 numbering for MIDI channels.
+# Your MIDI device may display channels as 1-15,
+# thus you may need to subtract 1 from the displayed value
+# to match the value here.
 
 import usb_midi
 from micropython import const
+import config
 
-_CLOCK = const(0xF8)
-_START = const(0xFA)
-_CONTINUE = const(0xFB)
-_STOP = const(0xFC)
-_NOTE_ON_NYBBLE = const(0x9)
-_NOTE_OFF_NYBBLE = const(0x8)
+# Official MIDI Real-Time System Status Bytes
+_CLOCK: bytes = const(b'\xF8')
+_START: bytes = const(b'\xFA')
+_CONTINUE: bytes = const(b'\xFB')
+_STOP: bytes = const(b'\xFC')
 
+_DATA_MSG_MASK: int = const(0b10000000)
+
+# These "ports" are not to be confused with MIDI channels, etc.
 _INNIE = usb_midi.ports[0]
 _OUTIE = usb_midi.ports[1]
 
+# Generates NoteOn/NoteOff message values indexed for each channel
+NOTE_ON_MESSAGES: bytes = bytes(range(144, 160))
+NOTE_OFF_MESSAGES: bytes = bytes(range(128, 144))
+ALL_CHANNELS: range = range(0, 15)
+
 class MinimalMidi(object):
-    """Highly optimized, zero-allocation MIDI subset processor."""
+    """Tightly implementing the subset of MIDI we need."""
     
-    def __init__(self, in_channel, out_channel):
-        self.in_channel = in_channel
-        self.out_channel = out_channel
+    def __init__(self, in_channel: int, out_channel: int):
+        self.in_channel: int = in_channel
+        self.out_channel: int = out_channel
         
-        # Pre-allocate static bytearrays to eliminate allocations during I/O
-        self._out_buf3 = bytearray(3)
-        self._out_buf1 = bytearray(1)
-        self._in_buf = bytearray(1)
+        # Micro-cache local performance pointers to hardware I/O routines
+        self._readinto = _INNIE.readinto
+        self._write = _OUTIE.write
         
-        # Pre-compute channel status bytes
-        self._note_on_status = 144 + out_channel
-        self._note_off_status = 128 + out_channel
+        # Pre-allocate a mutable byte array buffer for outbound note actions
+        self._note_buffer: bytearray = bytearray(3)
         
-        # Pre-allocated re-usable result dictionary to prevent GC thrashing
-        self.msg_result = {'type': None, 'note': 0, 'velocity': 0}
+        # Pre-allocate static 1-byte mutable input buffer to prevent heap allocations on reads
+        self._in_buf: bytearray = bytearray(1)
 
-    def send_note_on(self, n, v):
-        buf = self._out_buf3
-        buf[0] = self._note_on_status
-        buf[1] = n
-        buf[2] = v
-        _OUTIE.write(buf)
+    def send_note_on(self, n: int, v: int) -> None:
+        msgByte: int = NOTE_ON_MESSAGES[self.out_channel]
+        # Overwrite the existing elements of the pre-allocated buffer 
+        # instead of instantiating an immutable bytes object on the fly.
+        self._note_buffer[0] = msgByte
+        self._note_buffer[1] = n
+        self._note_buffer[2] = v
+        self._write(self._note_buffer)
 
-    def send_note_off(self, n):
-        buf = self._out_buf3
-        buf[0] = self._note_off_status
-        buf[1] = n
-        buf[2] = 0
-        _OUTIE.write(buf)
+    def send_note_off(self, n: int) -> None:
+        msgByte: int = NOTE_OFF_MESSAGES[self.out_channel]
+        self._note_buffer[0] = msgByte
+        self._note_buffer[1] = n
+        self._note_buffer[2] = 0
+        self._write(self._note_buffer)
 
-    def send_clock(self):
-        buf = self._out_buf1
-        buf[0] = _CLOCK
-        _OUTIE.write(buf)
+    def send_clock(self) -> None:
+        self._write(_CLOCK)
 
-    def clear_msgs(self):
-        buf = self._in_buf
-        while _INNIE.readinto(buf, 1):
+    def clear_msgs(self) -> None:
+        # Flush the buffer allocation-free using our input buffer slot
+        while self._readinto(self._in_buf, 1):
             pass
 
-    def get_msg(self):
-        buf = self._in_buf
-        if not _INNIE.readinto(buf, 1):
+    def get_msg(self) -> bytes:
+        # Use readinto to drop a single incoming byte directly into our pre-allocated memory slot
+        if not self._readinto(self._in_buf, 1):
             return None
             
-        n = buf[0]
+        n: int = self._in_buf[0] # Fetch the integer byte value directly from the buffer
         
-        # Real-time messages (Clock, Start, Stop, Continue)
-        if n >= 0xF8:
-            res = self.msg_result
-            res['note'] = 0
-            res['velocity'] = 0
-            if n == _CLOCK:
-                res['type'] = 'Clock'
-            elif n == _START:
-                res['type'] = 'Start'
-            elif n == _STOP:
-                res['type'] = 'Stop'
-            elif n == _CONTINUE:
-                res['type'] = 'Continue'
-            else:
-                return None
-            return res
-
-        # Status byte validation (Must have MSB set)
-        if n < 0x80:
+        if not(n & _DATA_MSG_MASK): # ditch stray data bytes quickly
             return None
-
-        # Channel voice messages
-        nybble = n >> 4
-        if nybble == _NOTE_ON_NYBBLE:
-            if _INNIE.readinto(buf, 1):
-                note = buf[0]
-                if _INNIE.readinto(buf, 1):
-                    res = self.msg_result
-                    res['type'] = 'NoteOn'
-                    res['note'] = note
-                    res['velocity'] = buf[0]
-                    return res
-        elif nybble == _NOTE_OFF_NYBBLE:
-            if _INNIE.readinto(buf, 1):
-                note = buf[0]
-                if _INNIE.readinto(buf, 1):
-                    res = self.msg_result
-                    res['type'] = 'NoteOff'
-                    res['note'] = note
-                    res['velocity'] = buf[0]
-                    return res
-                    
-        return None
+            
+        # Match strictly against MIDI real-time transport bytes.
+        if n == 0xF8:    # _CLOCK
+            return _CLOCK
+        elif n == 0xFA:  # _START
+            return _START
+        elif n == 0xFC:  # _STOP
+            return _STOP
+        elif n == 0xFB:  # _CONTINUE
+            return _CONTINUE
+        else:
+            return None

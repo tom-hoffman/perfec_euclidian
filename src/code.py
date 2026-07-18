@@ -1,5 +1,10 @@
-# PERFEC System Euclidian Sequencer # code.py 
-# copyright 2026, Tom Hoffman # MIT License
+# PERFEC System Euclidian Sequencer
+# code.py
+# copyright 2026, Tom Hoffman
+# MIT License
+# This module contains the main loop of the application.
+
+__version__ = "1.0.0 beta"
 
 import gc
 print("After gc: " + str(gc.mem_free()))
@@ -13,44 +18,59 @@ print("After model: " + str(gc.mem_free()))
 import board_controller
 print("After board controller: " + str(gc.mem_free()))
 
-led_count = 10
-tm = SequenceModel(config.DEFAULT_NOTE, config.NOTE_NUMBERS, led_count=led_count)
+led_count: int = 10
+
+# Initialize core model and generate the initial pattern
+tm: SequenceModel = SequenceModel(config.DEFAULT_NOTE, config.NOTE_NUMBERS, led_count=led_count)
 tm.generate()
 
-mc = midi_controller.Playing(tm, MinimalMidi(None, config.channel_out))
+# Pre-instantiate our MIDI parser and initial state
+midi_driver: MinimalMidi = MinimalMidi(0, config.CHANNEL_OUT) # Explicitly initialized with 0 for in_channel
+mc: midi_controller.MidiController = midi_controller.Stopped(tm, midi_driver)
 
-# Pre-instantiate both views to prevent continuous garbage collection pauses
+# Pre-instantiate ALL possible views once at boot time to prevent dynamic heap fragmentation
 view_playing = board_controller.SeqPlayingView(tm)
 view_stopped = board_controller.SeqStoppedView(tm)
-view_config = board_controller.ConfigView(tm) # Instantiated once at startup
+view_config_playing = board_controller.ConfigPlayingView(tm)
+view_config_stopped = board_controller.ConfigStoppedView(tm)
 
-# Set initial state
-bc = view_playing.update_mode()
+# Fast nested dictionary map to swap active view modes allocation-free based on:
+# 1. The slide switch state (cpx.switch_is_left() -> True means config menu, False means sequencer)
+# 2. The MIDI transport status class type (Playing vs Stopped)
+view_map: dict = {
+    False: {
+        midi_controller.Playing: view_playing,
+        midi_controller.Stopped: view_stopped
+    },
+    True: {
+        midi_controller.Playing: view_config_playing,
+        midi_controller.Stopped: view_config_stopped
+    }
+}
+
+# Determine our initial view state based on the physical switch position
+bc = view_map[board_controller.cpx.switch_is_left()][type(mc)].update_mode()
 bc.update_pixels()
+
+# Set garbage collection to only happen when explicitly triggered.
+gc.disable()
+gc.collect()
 print("After object creation: " + str(gc.mem_free()))
 
+# Flush any stray startup bytes out of the UART serial ring buffer
 mc.midi.clear_msgs()
 
-# Cache global configuration lookup and direct methods locally to bypass dictionary lookups
-MIDI_READ_REPEAT = config.MIDI_READ_REPEAT
-playing_class = midi_controller.Playing
-
-# Cache view states into a fast list lookup rather than using 'isinstance'
-# Index 0: Stopped, Index 1: Playing
-views = [view_stopped, view_playing]
-
 while True:
-    # 1. High-speed MIDI parsing burst
-    for _ in range(MIDI_READ_REPEAT):
+    # 1. High-Priority MIDI Parsing: Run multiple read iterations in a tight block
+    for _ in config.ACTIVE_REPEATS:
         mc = mc.main()
-        
-    # 2. Optimized conditional state check
+
+    # 2. State-Machine Synchronization: Map views cleanly when transport changes happen
+    # We dynamically fetch the current switch state to index into our nested grid layout
     if tm.midi_changed:
-        # Determine view state based on type match without allocating memory
-        is_playing = 1 if (mc.__class__ is playing_class) else 0
-        bc = views[is_playing]
+        bc = view_map[board_controller.cpx.switch_is_left()][type(mc)]
         tm.midi_changed = False
-        
-    # 3. Hardware UI refresh
+
+    # 3. Handle Board Input and Redraw Visual Elements
     bc = bc.update_mode()
     bc = bc.main()

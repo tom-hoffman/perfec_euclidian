@@ -1,115 +1,151 @@
-# PERFEC System Euclidian Sequencer # model.py 
-# copyright 2026, Tom Hoffman # MIT License
+# PERFEC System Euclidian Sequencer
+# model.py
+# copyright 2026, Tom Hoffman
+# MIT License
 
 import config
+import math
 
-# Cache constant global lookups locally to eliminate module dictionary overhead
-_PPQN = config.PPQN
-_VELOCITIES_LEN = len(config.VELOCITIES)
-
-def gen_mask(n, acc):
-    # Replaced recursion with a highly efficient iterative loop to prevent call stack overhead
-    while n > 1:
-        acc += (1 << (n - 1))  # Use rapid bit-shifting instead of slow exponentiation (2 ** x)
-        n -= 1
-    return acc + 1
+def gen_mask(n: int, acc: int) -> int:
+    # generates a bitmask for n bits
+    if n == 1:
+        return acc + 1
+    else:
+        return gen_mask(n - 1, acc + (2 ** (n - 1)))
 
 class SequenceModel(object):
-    def __init__(self, note_index, note_tuple, steps=config.DEFAULT_STEPS, triggers=config.DEFAULT_TRIGGERS, led_count=9, rotation=config.DEFAULT_ROTATION):
-        self.note_index = note_index
-        self.note_tuple = note_tuple
-        self.steps = steps
-        self.triggers = triggers
-        self.rotation = rotation
-        self.sequence = [False] * steps
-        self.active_step = 0
-        self.velocity_index = config.DEFAULT_VELOCITY
-        self.clock_count = 0
-        self.update_display = True
-        self.midi_changed = True
-        self.led_count = led_count
+    def __init__(self, 
+                 note_index: int, 
+                 note_tuple: tuple, 
+                 steps: int = config.DEFAULT_STEPS, 
+                 triggers: int = config.DEFAULT_TRIGGERS, 
+                 led_count: int = 9, 
+                 rotation: int = config.DEFAULT_ROTATION,
+                 channel_out: int = config.CHANNEL_OUT):
+        self.note_index: int = note_index
+        self.note_tuple: tuple = note_tuple
+        self.steps: int = steps
+        self.triggers: int = triggers
+        self.rotation: int = rotation
+        self.channel_out: int = channel_out
         
-        # Pre-cache internal constants and structure lengths
-        self._note_tuple_len = len(note_tuple)
+        # Pre-allocate a mutable bytearray to store step states allocation-free
+        # True steps map to 1, False steps map to 0
+        self.sequence: bytearray = bytearray(led_count)
+        
+        self.active_step: int = 0
+        self.velocity_index: int = config.DEFAULT_VELOCITY
+        
+        # Tracks the user selected index (0-4) for the active gate ratio duration
+        self.gate_duration_index: int = config.GATE_DURATION_INDEX
+        
+        self.clock_count: int = 0
+        self.update_display: bool = True
+        self.midi_changed: bool = True
+        self.led_count: int = led_count
 
-    def generate(self):
-        '''Generates a "Euclidian rhythm" using high-speed integer arithmetic.'''
-        steps = self.steps
-        triggers = self.triggers
-        
-        if triggers == 0:
-            self.sequence = [False] * steps
-        else:
-            # Replaced floating-point multiplication and math.floor with fast integer math.
-            # (i * triggers) // steps removes floats and eliminates the 0.001 adjustment hack entirely.
-            result = [False] * steps
-            previous = -1
-            for i in range(steps):
-                current = (i * triggers) // steps
+    def generate(self) -> None:
+        '''
+        Generates a "Euclidian rhythm" where triggers are evenly distributed over a given number of steps.
+        '''
+        # Clear out our pre-allocated array up to the active step boundary without instantiating new lists
+        for i in range(self.steps):
+            self.sequence[i] = 0
+
+        if self.triggers > 0:
+            # Replicating your original math exactly, but using pure integer floor division (//)
+            # to remain allocation-free and avoid CircuitPython floating-point errors.
+            previous = -1  # Initialize to -1 so the very first step (0) always calculates as a change/trigger
+            
+            for i in range(self.steps):
+                current = (i * self.triggers) // self.steps
+                
                 if current != previous:
-                    result[i] = True
-                    previous = current
-            
-            # Fast slice rotation
-            rot = self.rotation
-            self.sequence = result[rot:] + result[:rot]
-            
+                    is_trigger = 1
+                else:
+                    is_trigger = 0
+                    
+                previous = current
+                
+                # Apply the user-first rotation shift cleanly using our modulo bounds
+                rotated_idx: int = (i + self.rotation) % self.steps
+                self.sequence[rotated_idx] = is_trigger
+                
         self.update_display = True
 
-    def increment_note(self):
-        self.note_index = (self.note_index + 1) % self._note_tuple_len
+
+
+    def increment_channel(self) -> None:
+        '''Advances through MIDI channels 0-15 smoothly, wrapping back to 0.'''
+        self.channel_out = (self.channel_out + 1) % 16
         self.update_display = True
 
-    def increment_clock(self):
-        '''Highly optimized time-critical execution path.'''
-        # Increment clock counter directly
-        cc = self.clock_count + 1
-        
-        if cc >= _PPQN:
-            # Advance step and use fast sequence boundary rollover
-            step = self.active_step + 1
-            if step >= len(self.sequence):
-                step = 0
-            self.active_step = step
+    def increment_note(self) -> None:
+        self.note_index = (self.note_index + 1) % len(self.note_tuple)
+        self.update_display = True
+
+    def increment_clock(self) -> None:
+        self.clock_count += 1
+        if self.clock_count >= config.PPQN:
+            # Use self.steps directly for modulo instead of invoking len()
+            self.active_step = (self.active_step + 1) % self.steps
             self.update_display = True
             self.clock_count = 0
-        else:
-            self.clock_count = cc
 
-    def is_active_step(self):
-        return self.sequence[self.active_step]
+    def get_gate_pulses(self) -> int:
+        '''
+        Calculates the active gate duration in raw clock pulses.
+        Uses pure integer percentage math: (PPQN * ratio) // 100
+        '''
+        return (config.PPQN * config.GATE_RATIOS[self.gate_duration_index]) // 100
 
-    def stop_reset(self):
-        self.clock_count = 0
+    def is_active_step(self) -> bool:
+        # Evaluate integer mapping cleanly (1 acts as True, 0 acts as False)
+        return self.sequence[self.active_step] == 1
+
+    def stop_reset(self) -> None:
+        self.reset_clock()
         self.active_step = 0
         self.update_display = True
         self.midi_changed = True
 
-    def reset_clock(self):
+    def reset_clock(self) -> None:
         self.clock_count = 0
 
-    def triggered(self):
+    def triggered(self) -> int:
         return 1 & self.seq
 
-    def add_step(self):
-        self.steps = (self.steps + 1) if (self.steps < self.led_count) else 1
+    def add_step(self) -> None:
+        if self.steps < self.led_count:
+            self.steps += 1
+        else:
+            self.steps = 1
         self.triggers = 0
         self.active_step = 0
         self.generate()
 
-    def add_trigger(self):
-        self.triggers = (self.triggers + 1) if (self.triggers < self.steps) else 0
+    def add_trigger(self) -> None:
+        if self.triggers < self.steps:
+            self.triggers += 1
+        else:
+            self.triggers = 0
         self.generate()
 
-    def add_rotation(self):
+    def add_rotation(self) -> None:
         self.rotation = (self.rotation + 1) % self.steps
         self.generate()
 
-    def sub_rotation(self):
-        rot = self.rotation - 1
-        self.rotation = (self.steps - 1) if (rot < 0) else rot
+    def sub_rotation(self) -> None:
+        self.rotation -= 1
+        if self.rotation < 0:
+            self.rotation = self.steps - 1
         self.generate()
 
-    def increment_velocity(self):
-        self.velocity_index = (self.velocity_index + 1) % _VELOCITIES_LEN
+    def increment_velocity(self) -> None:
+        self.velocity_index = (self.velocity_index + 1) % len(config.VELOCITIES)
+        self.update_display = True
+
+    def increment_gate(self) -> None:
+        '''Advances through our 5 available gate durations smoothly.'''
+        self.gate_duration_index = (self.gate_duration_index + 1) % len(config.GATE_RATIOS)
         self.update_display = True
