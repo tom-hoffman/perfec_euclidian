@@ -27,7 +27,6 @@ class View(object):
 
 class SeqPlayingView(View):
     def update_mode(self) -> "View":
-        # Check the switch and route to ConfigPlayingView if flipped left
         if cpx.switch_is_left():
             self.model.update_display = True
             return ConfigPlayingView(self.model, self.pix)
@@ -51,29 +50,24 @@ class SeqPlayingView(View):
                     r = 96
                 else:
                     r = 0
-                    
                 if seq_data[i] == 1:
                     g = 48
                 else:
                     g = 0
-                    
                 b = 16  # add velocity calculation
                 cpx.pix[i] = (r, g, b)
             else:
                 cpx.pix[i] = (0, 0, 0)
-
         self.model.update_display = False
         cpx.pix.show()
 
 class SeqStoppedView(SeqPlayingView):
     '''Sequence view while the clock has been stopped.'''
     def update_mode(self) -> "View":
-        # Check the switch and route to ConfigStoppedView if flipped left
         if cpx.switch_is_left():
             self.model.update_display = True
             return ConfigStoppedView(self.model, self.pix)
-        else:
-            return self
+        return self
 
     def check_buttons(self) -> None:
         if cpx.a_button.went_down():
@@ -81,25 +75,15 @@ class SeqStoppedView(SeqPlayingView):
         elif cpx.b_button.went_down():
             self.model.sub_rotation()
 
-class ConfigView(View):
-    '''Base configuration layout handling shared display graphics.'''
-    def display_velocity(self) -> None:
-        # Standard green display tracking on the right half of the ring (LEDs 5-9)
-        idx: int = self.model.velocity_index
-        for i in range(5, 10):
-            if i <= (4 + idx):
-                cpx.pix[i] = (0, 32, 0)
-            else:
-                cpx.pix[i] = (0, 0, 0)
-
-class ConfigPlayingView(ConfigView):
+class ConfigPlayingView(View):
     '''Configuration view entered while the master clock is active.'''
     def check_buttons(self) -> None:
         if cpx.a_button.went_down():
-            # Button A now increments our dynamic gate duration percentage
-            self.model.increment_gate()
-        elif cpx.b_button.went_down():
+            # Button A increments the left-side attribute (Velocity)
             self.model.increment_velocity()
+        elif cpx.b_button.went_down():
+            # Button B increments the right-side attribute (Gate)
+            self.model.increment_gate()
 
     def update_mode(self) -> "View":
         if cpx.switch_is_left():
@@ -109,29 +93,38 @@ class ConfigPlayingView(ConfigView):
             self.model.midi_changed = True
             return SeqPlayingView(self.model, self.pix)
 
-    def display_gate(self) -> None:
-        # Upward-growing blue gate tracker on the left half of the ring (LEDs 4 down to 0)
-        idx: int = self.model.gate_duration_index
+    def display_velocity(self) -> None:
+        # Upward-growing Blue velocity tracker handling 6 options (0 to 5 LEDs lit)
+        idx: int = self.model.velocity_index
         for i in range(5):
-            if i <= idx:
+            if i < idx:
                 cpx.pix[4 - i] = (0, 0, 32)
             else:
                 cpx.pix[4 - i] = (0, 0, 0)
 
+    def display_gate(self) -> None:
+        # Green gate duration tracker on the right half of the ring (LEDs 5 to 9) [Mnemonic: Green=Gate]
+        idx: int = self.model.gate_duration_index
+        for i in range(5):
+            if i <= idx:
+                cpx.pix[5 + i] = (0, 32, 0)
+            else:
+                cpx.pix[5 + i] = (0, 0, 0)
+
     def update_pixels(self) -> None:
-        self.display_gate()
         self.display_velocity()
+        self.display_gate()
         self.model.update_display = False
         self.pix.show()
 
-class ConfigStoppedView(ConfigView):
+class ConfigStoppedView(View):
     '''Configuration view entered while the master clock is stopped.'''
     def check_buttons(self) -> None:
         if cpx.a_button.went_down():
             self.model.increment_note()
         elif cpx.b_button.went_down():
-            # Button B now advances the raw binary MIDI channel selection!
-            self.model.increment_channel()
+            # Button B increments through our available PPQN values
+            self.model.increment_ppqn()
 
     def update_mode(self) -> "View":
         if cpx.switch_is_left():
@@ -142,34 +135,25 @@ class ConfigStoppedView(ConfigView):
             return SeqStoppedView(self.model, self.pix)
 
     def display_note(self) -> None:
-        # Upward-growing violet note index tracker on the left half of the ring (LEDs 4 down to 0)
+        # Upward-growing violet note tracker handling 6 options (0 to 5 LEDs lit)
         idx: int = self.model.note_index
         for i in range(5):
-            if i <= idx:
+            if i < idx:
                 cpx.pix[4 - i] = (32, 0, 32)
             else:
                 cpx.pix[4 - i] = (0, 0, 0)
 
-    def display_channel(self) -> None:
-        '''Uses a four bit binary number to display the active channel layout on LEDs 5-8.'''
-        # Read directly from the live model state tracker
-        n: int = self.model.channel_out
-        
-        # Explicit 4-bit index walk for students (evaluating bit 0 through bit 3)
-        for i in range(4):
-            # Bitwise check: if the bit at 2^i position is high (1)
-            if n & (1 << i):
-                # Bright Yellow/Amber color (Green + Red) representing 1
+    def display_ppqn(self) -> None:
+        # Standard yellow (Red + Green) tracker on the right half of the ring (LEDs 5-9)
+        idx: int = self.model.ppqn_index
+        for i in range(5):
+            if i <= idx:
                 cpx.pix[5 + i] = (32, 32, 0)
             else:
-                # Dim White/Purple representing 0
-                cpx.pix[5 + i] = (8, 8, 8)
-                
-        # Turn the remaining last pixel (LED 9) completely off to preserve the 4-bit UI boundary
-        cpx.pix[9] = (0, 0, 0)
+                cpx.pix[5 + i] = (0, 0, 0)
 
     def update_pixels(self) -> None:
         self.display_note()
-        self.display_channel()
+        self.display_ppqn()
         self.model.update_display = False
         self.pix.show()

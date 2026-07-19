@@ -4,80 +4,44 @@
 # MIT License
 
 import config
-import math
-
-def gen_mask(n: int, acc: int) -> int:
-    # generates a bitmask for n bits
-    if n == 1:
-        return acc + 1
-    else:
-        return gen_mask(n - 1, acc + (2 ** (n - 1)))
 
 class SequenceModel(object):
-    def __init__(self, 
-                 note_index: int, 
-                 note_tuple: tuple, 
-                 steps: int = config.DEFAULT_STEPS, 
-                 triggers: int = config.DEFAULT_TRIGGERS, 
-                 led_count: int = 9, 
-                 rotation: int = config.DEFAULT_ROTATION,
-                 channel_out: int = config.CHANNEL_OUT):
+    def __init__(self, note_index: int, note_tuple: tuple):
         self.note_index: int = note_index
         self.note_tuple: tuple = note_tuple
-        self.steps: int = steps
-        self.triggers: int = triggers
-        self.rotation: int = rotation
-        self.channel_out: int = channel_out
-        
-        # Pre-allocate a mutable bytearray to store step states allocation-free
-        # True steps map to 1, False steps map to 0
-        self.sequence: bytearray = bytearray(led_count)
-        
+        self.steps: int = config.DEFAULT_STEPS
+        self.triggers: int = config.DEFAULT_TRIGGERS
+        self.rotation: int = config.DEFAULT_ROTATION        
         self.active_step: int = 0
         self.velocity_index: int = config.DEFAULT_VELOCITY
-        
-        # Tracks the user selected index (0-4) for the active gate ratio duration
         self.gate_duration_index: int = config.GATE_DURATION_INDEX
-        
+        self.ppqn_index: int = config.DEFAULT_PPQN_INDEX
         self.clock_count: int = 0
         self.update_display: bool = True
         self.midi_changed: bool = True
-        self.led_count: int = led_count
+        self.led_count: int = 10
+        # Pre-allocate a mutable bytearray to store step states allocation-free
+        # True steps map to 1, False steps map to 0
+        self.sequence: bytearray = bytearray(self.led_count)
 
     def generate(self) -> None:
         '''
         Generates a "Euclidian rhythm" where triggers are evenly distributed over a given number of steps.
         '''
-        # Clear out our pre-allocated array up to the active step boundary without instantiating new lists
+        # clear the sequence.
         for i in range(self.steps):
             self.sequence[i] = 0
-
         if self.triggers > 0:
-            # Replicating your original math exactly, but using pure integer floor division (//)
-            # to remain allocation-free and avoid CircuitPython floating-point errors.
-            previous = -1  # Initialize to -1 so the very first step (0) always calculates as a change/trigger
-            
+            previous = -1
             for i in range(self.steps):
                 current = (i * self.triggers) // self.steps
-                
                 if current != previous:
                     is_trigger = 1
                 else:
                     is_trigger = 0
-                    
                 previous = current
-                
-                # Apply the user-first rotation shift cleanly using our modulo bounds
                 rotated_idx: int = (i + self.rotation) % self.steps
                 self.sequence[rotated_idx] = is_trigger
-                
-        self.update_display = True
-
-
-
-    def increment_channel(self) -> None:
-        '''Advances through MIDI channels 0-15 smoothly, wrapping back to 0.'''
-        self.channel_out = (self.channel_out + 1) % 16
         self.update_display = True
 
     def increment_note(self) -> None:
@@ -86,8 +50,8 @@ class SequenceModel(object):
 
     def increment_clock(self) -> None:
         self.clock_count += 1
-        if self.clock_count >= config.PPQN:
-            # Use self.steps directly for modulo instead of invoking len()
+        # Read active PPQN value dynamically from config based on our model index selection
+        if self.clock_count >= config.PPQN_VALUES[self.ppqn_index]:
             self.active_step = (self.active_step + 1) % self.steps
             self.update_display = True
             self.clock_count = 0
@@ -97,10 +61,10 @@ class SequenceModel(object):
         Calculates the active gate duration in raw clock pulses.
         Uses pure integer percentage math: (PPQN * ratio) // 100
         '''
-        return (config.PPQN * config.GATE_RATIOS[self.gate_duration_index]) // 100
+        active_ppqn: int = config.PPQN_VALUES[self.ppqn_index]
+        return (active_ppqn * config.GATE_RATIOS[self.gate_duration_index]) // 100
 
     def is_active_step(self) -> bool:
-        # Evaluate integer mapping cleanly (1 acts as True, 0 acts as False)
         return self.sequence[self.active_step] == 1
 
     def stop_reset(self) -> None:
@@ -148,4 +112,9 @@ class SequenceModel(object):
     def increment_gate(self) -> None:
         '''Advances through our 5 available gate durations smoothly.'''
         self.gate_duration_index = (self.gate_duration_index + 1) % len(config.GATE_RATIOS)
+        self.update_display = True
+
+    def increment_ppqn(self) -> None:
+        '''Advances through our 5 available PPQN speeds smoothly, wrapping back to 0.'''
+        self.ppqn_index = (self.ppqn_index + 1) % len(config.PPQN_VALUES)
         self.update_display = True

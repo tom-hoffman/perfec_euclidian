@@ -18,15 +18,13 @@ print("After model: " + str(gc.mem_free()))
 import board_controller
 print("After board controller: " + str(gc.mem_free()))
 
-led_count: int = 10
-
 # Initialize core model and generate the initial pattern
-tm: SequenceModel = SequenceModel(config.DEFAULT_NOTE, config.NOTE_NUMBERS, led_count=led_count)
+tm: SequenceModel = SequenceModel(config.DEFAULT_NOTE, config.NOTE_NUMBERS)
 tm.generate()
 
 # Pre-instantiate our MIDI parser and initial state
 midi_driver: MinimalMidi = MinimalMidi(0, config.CHANNEL_OUT) # Explicitly initialized with 0 for in_channel
-mc: midi_controller.MidiController = midi_controller.Stopped(tm, midi_driver)
+mc: midi_controller.MidiController = midi_controller.Playing(tm, midi_driver)
 
 # Pre-instantiate ALL possible views once at boot time to prevent dynamic heap fragmentation
 view_playing = board_controller.SeqPlayingView(tm)

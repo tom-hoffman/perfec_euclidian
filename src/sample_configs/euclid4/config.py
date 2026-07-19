@@ -8,7 +8,7 @@ from micropython import const
 
 # Assign this CPX a one digit identifier different than other modules
 # of the same type.
-CPX_NUMBER: int = 2
+CPX_NUMBER: int = 4
 USB_NAME: str = "EUCLID" + str(CPX_NUMBER)
 
 # Output MIDI channel for note messages.
@@ -27,7 +27,7 @@ CHANNEL_OUT: int = 9
 DEFAULT_NOTE: int = CPX_NUMBER
 
 # Starting number of steps in the sequence.
-DEFAULT_STEPS: int = 5
+DEFAULT_STEPS: int = 8
 
 # Starting number of triggers in the sequence.
 DEFAULT_TRIGGERS: int = 3
@@ -41,7 +41,7 @@ DEFAULT_ROTATION: int = 0
 VELOCITIES: tuple = const((0, 25, 50, 75, 100, 127))
 
 # Default velocity index:
-DEFAULT_VELOCITY: int = 4
+DEFAULT_VELOCITY: int = 3
 
 # Setting Available Notes
 NOTE_NUMBERS: tuple = const((36, 40, 43, 41, 46, 42))
@@ -58,7 +58,7 @@ DEFAULT_PPQN_INDEX: int = 3
 GATE_RATIOS: tuple = const((10, 25, 50, 75, 100))
 
 # Default gate duration selection index (ranges from 0 to 4)
-GATE_DURATION_INDEX: int = 0
+GATE_DURATION_INDEX: int = 1
 
 # MIDI repeat count
 # this is the number of times we check and process the MIDI queue
